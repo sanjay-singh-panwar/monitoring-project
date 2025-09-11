@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Node App Items Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fa; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px;
+      border-radius: 12px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+    h1 { text-align: center; }
+    input, button { padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; }
+    button { cursor: pointer; background: #007bff; color: white; border: none; }
+    button:hover { background: #0056b3; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 8px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+    li button { background: red; font-size: 12px; padding: 5px 10px; }
+    #trafficBtn { background: green; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 Items Manager</h1>
+    <input type="text" id="itemInput" placeholder="Enter item..." />
+    <button onclick="addItem()">Add Item</button>
+    <button id="trafficBtn" onclick="toggleTraffic()">▶ Start Traffic</button>
+    <ul id="itemsList"></ul>
+  </div>
+
+  <script>
+    let trafficInterval = null;
+
+    async function fetchItems() {
+      const res = await fetch('/items');
+      const data = await res.json();
+      const list = document.getElementById('itemsList');
+      list.innerHTML = '';
+      data.forEach((item, idx) => {
+        const li = document.createElement('li');
+        li.innerHTML = `${item} <button onclick="deleteItem(${idx})">Delete</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    async function addItem(value) {
+      const input = document.getElementById('itemInput');
+      const itemValue = value || input.value;
+      if (!itemValue) return;
+      await fetch('/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item: itemValue })
+      });
+      input.value = '';
+      fetchItems();
+    }
+
+    async function deleteItem(idx) {
+      await fetch(`/items/${idx}`, { method: 'DELETE' });
+      fetchItems();
+    }
+
+    // 🔥 Auto Traffic Generator
+    function toggleTraffic() {
+      const btn = document.getElementById('trafficBtn');
+      if (trafficInterval) {
+        clearInterval(trafficInterval);
+        trafficInterval = null;
+        btn.textContent = "▶ Start Traffic";
+        btn.style.background = "green";
+      } else {
+        trafficInterval = setInterval(() => {
+          const random = Math.random();
+          if (random > 0.5) {
+            addItem("auto-item-" + Math.floor(Math.random() * 1000));
+          } else {
+            fetch('/items')
+              .then(res => res.json())
+              .then(data => {
+                if (data.length > 0) {
+                  const idx = Math.floor(Math.random() * data.length);
+                  deleteItem(idx);
+                }
+              });
+          }
+        }, 1000); // every 1 sec
+        btn.textContent = "⏸ Stop Traffic";
+        btn.style.background = "red";
+      }
+    }
+
+    // Load items on page load
+    fetchItems();
+  </script>
+</body>
+</html>
+
